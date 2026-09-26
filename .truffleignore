@@ -1,0 +1,9 @@
+.git
+.agents
+backend/target
+frontend/node_modules
+frontend/dist
+frontend/coverage
+terraform/.terraform
+**/*.tfstate
+**/*.tfstate.backup

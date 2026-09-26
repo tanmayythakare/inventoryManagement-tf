@@ -45,7 +45,7 @@ pipeline {
                 echo "==> [Gate 1] Running TruffleHog Secret Scan..."
                 sh '''
                     echo "Scanning repository for leaked credentials..."
-                    trufflehog filesystem . --no-update --exclude-paths=.git,backend/target,frontend/node_modules,frontend/dist --fail --json > trufflehog-report.json || {
+                    trufflehog filesystem . --no-update --exclude-paths=.truffleignore --fail --json > trufflehog-report.json || {
                         EXIT_CODE=$?
                         if [ $EXIT_CODE -eq 183 ]; then
                             echo "CRITICAL: Leaked credentials detected by TruffleHog! Halting pipeline (exit 183)."
