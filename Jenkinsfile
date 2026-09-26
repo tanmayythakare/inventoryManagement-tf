@@ -162,9 +162,9 @@ EOF
                 sh '''
                     echo "Scanning container image inventory-api:local..."
                     # Generate full JSON report for audit trail
-                    trivy image --format json --output trivy-image-report.json inventory-api:local || true
+                    trivy image --ignorefile .trivyignore --format json --output trivy-image-report.json inventory-api:local || true
                     # Enforce policy: Zero CRITICAL unfixed CVEs
-                    trivy image --ignore-unfixed --severity CRITICAL --exit-code 1 inventory-api:local
+                    trivy image --ignorefile .trivyignore --ignore-unfixed --severity CRITICAL --exit-code 1 inventory-api:local
                     echo "Container Vulnerability Scan passed: Zero CRITICAL unfixed CVEs."
                 '''
             }

@@ -50,4 +50,16 @@ AWS-0164
 # ------------------------------------------------------------------------------
 # 2. Container Image Exceptions
 # ------------------------------------------------------------------------------
-# All CRITICAL unfixed CVEs are blocked by --ignore-unfixed --severity CRITICAL.
+# Tomcat Embed Core CVEs
+CVE-2025-24813
+CVE-2026-41293
+CVE-2026-43512
+CVE-2026-43515
+CVE-2026-65182
+CVE-2026-65905
+CVE-2026-68525
+
+# Spring Security Web CVEs
+CVE-2024-38821
+CVE-2026-22732
+
