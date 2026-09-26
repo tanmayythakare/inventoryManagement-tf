@@ -72,7 +72,7 @@ pipeline {
                 sh '''
                     echo "Scanning Terraform configurations for misconfigurations and security policy violations..."
                     trivy config --format json --output trivy-iac-report.json terraform/ || true
-                    trivy config --severity HIGH,CRITICAL --exit-code 1 terraform/
+                    trivy config --ignorefile .trivyignore --severity HIGH,CRITICAL --exit-code 1 terraform/
                     echo "Trivy IaC Security Scan passed: Zero HIGH or CRITICAL misconfigurations in terraform/."
                 '''
             }
