@@ -12,6 +12,7 @@ Thumbs.db
 # IDE & Editor Specific
 .idea/
 .vscode/
+.agents/
 *.iml
 *.iws
 *.ipr

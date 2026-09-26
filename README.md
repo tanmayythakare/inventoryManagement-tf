@@ -52,16 +52,18 @@ Production-ready cloud DevOps delivery platform and three-tier workload (Angular
 ├── .gitignore                    # Git version control ignore rules
 ├── .trivyignore                  # Approved security policy exceptions for Trivy
 ├── .trufflehog.yaml              # Secret scanner detector & allowlist configuration
-├── Jenkinsfile                   # Master CI/CD delivery pipeline (all-in-one / dispatcher)
-├── jenkins-ci                    # Dedicated CI pipeline (build, test, security scans, SBOM packaging)
-├── jenkins-cd                    # Dedicated CD pipeline (ECR publish, SSM rolling deploy to staging/prod)
-├── jenkins-tf                    # Dedicated IaC pipeline (Terraform plan, scan, and gated apply)
-├── Jenkinsfile.drift             # Scheduled Terraform remote state drift detection
+├── Jenkinsfile                   # Root CI/CD delivery pipeline
 ├── README.md                     # Project overview and runbook
-├── PROJECT.md                    # Detailed architecture and API contract specifications
-├── DRIFT_DETECTION.md            # SRE operational runbook for infrastructure drift
-├── TEST_INFRA.md                 # Testing pyramid methodology and verification matrix
 ├── docker-compose.yml            # Local development orchestration
+├── docs/                         # Architecture, testing, and operational runbooks
+│   ├── PROJECT.md                # Detailed architecture and API contract specifications
+│   ├── DRIFT_DETECTION.md        # SRE operational runbook for infrastructure drift
+│   └── TEST_INFRA.md             # Testing pyramid methodology and verification matrix
+├── jenkins/                      # Dedicated Jenkins pipeline definitions
+│   ├── jenkins-ci                # Continuous Integration (build, test, security scans, SBOM)
+│   ├── jenkins-cd                # Continuous Delivery (ECR publish, SSM rolling deploy)
+│   ├── jenkins-tf                # Infrastructure as Code (Terraform plan, scan, and gated apply)
+│   └── Jenkinsfile.drift         # Scheduled Terraform remote state drift detection
 ├── backend/                      # Spring Boot 3.3 REST API (Java 21)
 │   ├── src/main/java/            # Controllers, Services, Entities, Repositories, Security
 │   ├── src/main/resources/       # application.yml and Flyway migrations (V1-V5)
@@ -176,7 +178,7 @@ Options:
 
 ## 📚 Documentation Reference
 
-* [Architecture & API Contracts](PROJECT.md)
-* [Infrastructure Drift Detection Runbook](DRIFT_DETECTION.md)
-* [Testing Architecture & Coverage Matrix](TEST_INFRA.md)
+* [Architecture & API Contracts](docs/PROJECT.md)
+* [Infrastructure Drift Detection Runbook](docs/DRIFT_DETECTION.md)
+* [Testing Architecture & Coverage Matrix](docs/TEST_INFRA.md)
 * [Deployment Scripts Runbook](scripts/README.md)
