@@ -88,7 +88,11 @@ pipeline {
                 echo "==> [Gate 3a] Executing Angular Unit Tests & Coverage Verification (>= 60%)..."
                 dir('frontend') {
                     sh '''
-                        npm ci
+                        if [ -f package-lock.json ]; then
+                            npm ci
+                        else
+                            npm install
+                        fi
                         npm run test:ci
                     '''
                 }
