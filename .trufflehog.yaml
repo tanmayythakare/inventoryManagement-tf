@@ -13,15 +13,15 @@ scan:
   fail: true
   # Exclude non-source directories, transient build artifacts, and vendor caches
   exclude-paths:
-    - ".git"
-    - ".agents"
+    - "\\.git"
+    - "\\.agents"
     - "backend/target"
     - "frontend/node_modules"
     - "frontend/dist"
     - "frontend/coverage"
-    - "terraform/.terraform"
-    - "**/*.tfstate"
-    - "**/*.tfstate.backup"
+    - "terraform/\\.terraform"
+    - ".*\\.tfstate"
+    - ".*\\.tfstate\\.backup"
 
 detectors:
   # Cloud Provider Credentials
@@ -47,5 +47,5 @@ detectors:
 allowlist:
   paths:
     - "tests/e2e/helpers/mock-aws-client.js"
-    - "backend/src/test/**"
-    - "frontend/src/**/*.spec.ts"
+    - "backend/src/test/.*"
+    - "frontend/src/.*\\.spec\\.ts"
