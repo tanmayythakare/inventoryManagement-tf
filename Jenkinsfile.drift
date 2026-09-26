@@ -1,0 +1,119 @@
+pipeline {
+    agent any
+
+    options {
+        timestamps()
+        ansiColor('xterm')
+        timeout(time: 30, unit: 'MINUTES')
+        disableConcurrentBuilds()
+        buildDiscarder(logRotator(numToKeepStr: '60', artifactNumToKeepStr: '30'))
+    }
+
+    triggers {
+        // Run nightly at 02:00 UTC (burstable window when traffic is low)
+        cron('H 2 * * *')
+    }
+
+    parameters {
+        choice(name: 'TARGET_ENV', choices: ['prod', 'staging', 'dev'], description: 'Target environment for drift detection')
+        string(name: 'AWS_REGION', defaultValue: 'ap-south-1', description: 'AWS Region for Terraform state inspection')
+        booleanParam(name: 'ALERT_ON_DRIFT', defaultValue: true, description: 'Send SNS / CloudWatch alert on detected drift')
+    }
+
+    environment {
+        AWS_DEFAULT_REGION = "${params.AWS_REGION ?: 'ap-south-1'}"
+        AWS_REGION         = "${params.AWS_REGION ?: 'ap-south-1'}"
+        TARGET_ENV         = "${params.TARGET_ENV ?: 'prod'}"
+        TF_IN_AUTOMATION   = '1'
+        TF_INPUT           = '0'
+    }
+
+    stages {
+        stage('Initialize Environment & State') {
+            steps {
+                script {
+                    echo "=========================================================="
+                    echo "NIGHTLY INFRASTRUCTURE DRIFT DETECTION INITIATED"
+                    echo "Target Environment: ${env.TARGET_ENV}"
+                    echo "AWS Region:         ${env.AWS_REGION}"
+                    echo "Timestamp (UTC):    $(date -u)"
+                    echo "=========================================================="
+                }
+                dir("terraform/environments/${env.TARGET_ENV}") {
+                    sh '''
+                        echo "==> Initializing Terraform remote state backend..."
+                        terraform init -no-color
+                    '''
+                }
+            }
+        }
+
+        stage('Execute Drift Detection Plan') {
+            steps {
+                dir("terraform/environments/${env.TARGET_ENV}") {
+                    sh '''
+                        echo "==> Executing: terraform plan -detailed-exitcode..."
+                        set +e
+                        terraform plan -detailed-exitcode -no-color > drift-report.txt 2>&1
+                        EXIT_CODE=$?
+                        set -e
+
+                        echo "Terraform plan finished with exit code: ${EXIT_CODE}"
+
+                        if [ $EXIT_CODE -eq 0 ]; then
+                            echo "=========================================================="
+                            echo "STATUS: IN SYNC (Exit Code 0)"
+                            echo "No infrastructure drift detected. AWS resources perfectly match state."
+                            echo "=========================================================="
+                            exit 0
+                        elif [ $EXIT_CODE -eq 2 ]; then
+                            echo "=========================================================="
+                            echo "WARNING: INFRASTRUCTURE DRIFT DETECTED! (Exit Code 2)"
+                            echo "Discrepancy detected between live AWS resources and tfstate."
+                            echo "=========================================================="
+                            cat drift-report.txt
+
+                            # Publish alert to SNS if configured
+                            if [ "${params.ALERT_ON_DRIFT}" = "true" ]; then
+                                SNS_TOPIC_ARN=$(aws sns list-topics --query "Topics[?contains(TopicArn, 'infra-drift-alerts')].TopicArn" --output text --region ${AWS_REGION} 2>/dev/null || echo "")
+                                if [ -n "$SNS_TOPIC_ARN" ]; then
+                                    aws sns publish \
+                                        --topic-arn "$SNS_TOPIC_ARN" \
+                                        --subject "[ALERT] Infrastructure Drift Detected in ${TARGET_ENV}" \
+                                        --message "Terraform drift detected during nightly audit on ${TARGET_ENV}. Check Jenkins build for full diff: ${BUILD_URL}" \
+                                        --region ${AWS_REGION} || true
+                                fi
+                            fi
+
+                            # Mark pipeline as failed/warning to alert on-call engineer
+                            exit 2
+                        else
+                            echo "=========================================================="
+                            echo "ERROR: Terraform plan failed with system error (Exit Code ${EXIT_CODE})"
+                            echo "=========================================================="
+                            cat drift-report.txt
+                            exit $EXIT_CODE
+                        fi
+                    '''
+                }
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: "terraform/environments/${env.TARGET_ENV}/drift-report.txt", allowEmptyArchive: true
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            cleanWs deleteDirs: true, notFailBuild: true
+        }
+        success {
+            echo "DRIFT AUDIT COMPLETE: Environment ${env.TARGET_ENV} is clean and synchronized."
+        }
+        failure {
+            echo "DRIFT AUDIT ALERT: Action required - drift detected or inspection error in ${env.TARGET_ENV}."
+        }
+    }
+}

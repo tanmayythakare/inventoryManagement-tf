@@ -1,0 +1,171 @@
+pipeline {
+    agent any
+
+    options {
+        timestamps()
+        ansiColor('xterm')
+        timeout(time: 30, unit: 'MINUTES')
+        disableConcurrentBuilds()
+        buildDiscarder(logRotator(numToKeepStr: '30', artifactNumToKeepStr: '10'))
+    }
+
+    parameters {
+        string(name: 'AWS_REGION', defaultValue: 'ap-south-1', description: 'AWS Target Region')
+    }
+
+    environment {
+        AWS_DEFAULT_REGION   = 'ap-south-1'
+        AWS_REGION           = "${params.AWS_REGION ?: 'ap-south-1'}"
+        ECR_REPOSITORY_NAME  = 'inventory-api'
+        MAVEN_OPTS           = '-Xmx512m -XX:MaxRAMPercentage=50.0'
+        NODE_OPTIONS         = '--max-old-space-size=512'
+    }
+
+    stages {
+        stage('Initialize & Resolve Metadata') {
+            steps {
+                script {
+                    env.GIT_SHA       = sh(returnStdout: true, script: 'git rev-parse HEAD').trim()
+                    env.GIT_SHA_SHORT = sh(returnStdout: true, script: 'git rev-parse --short=8 HEAD').trim()
+                    env.IMAGE_TAG     = env.GIT_SHA_SHORT
+
+                    echo "=========================================================="
+                    echo "CI PIPELINE INITIATED (Build, Test, Scan & Package)"
+                    echo "Git SHA (Full):   ${env.GIT_SHA}"
+                    echo "Git SHA (Short):  ${env.GIT_SHA_SHORT}"
+                    echo "Image Tag:        ${env.IMAGE_TAG}"
+                    echo "Target Region:    ${env.AWS_REGION}"
+                    echo "=========================================================="
+                }
+            }
+        }
+
+        stage('Secret Scanning (TruffleHog)') {
+            steps {
+                echo "==> [Gate 1] Running TruffleHog Secret Scan..."
+                sh '''
+                    echo "Scanning repository for leaked credentials..."
+                    trufflehog filesystem . --exclude-paths=.git,backend/target,frontend/node_modules,frontend/dist --fail --json > trufflehog-report.json || {
+                        EXIT_CODE=$?
+                        if [ $EXIT_CODE -eq 183 ]; then
+                            echo "CRITICAL: Leaked credentials detected by TruffleHog! Halting pipeline (exit 183)."
+                            exit 183
+                        else
+                            echo "TruffleHog execution failed with error code $EXIT_CODE"
+                            exit $EXIT_CODE
+                        fi
+                    }
+                    echo "TruffleHog Secret Scan passed: Zero leaked credentials detected."
+                '''
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: 'trufflehog-report.json', allowEmptyArchive: true
+                }
+            }
+        }
+
+        stage('IaC Security Scanning (Trivy Config)') {
+            steps {
+                echo "==> [Gate 2] Running Trivy IaC Security Scan on Terraform..."
+                sh '''
+                    echo "Scanning Terraform configurations for misconfigurations and security policy violations..."
+                    trivy config --format json --output trivy-iac-report.json terraform/ || true
+                    trivy config --severity HIGH,CRITICAL --exit-code 1 terraform/
+                    echo "Trivy IaC Security Scan passed: Zero HIGH or CRITICAL misconfigurations in terraform/."
+                '''
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: 'trivy-iac-report.json', allowEmptyArchive: true
+                }
+            }
+        }
+
+        stage('Frontend Tests & Coverage') {
+            steps {
+                echo "==> [Gate 3a] Executing Angular Unit Tests & Coverage Verification (>= 60%)..."
+                dir('frontend') {
+                    sh '''
+                        npm ci
+                        npm run test:ci
+                    '''
+                }
+            }
+        }
+
+        stage('Backend Tests & Concurrency Verification') {
+            steps {
+                echo "==> [Gate 3b] Executing Maven Unit & Integration Tests (Testcontainers PostgreSQL 16)..."
+                dir('backend') {
+                    sh '''
+                        mvn clean verify -B
+                    '''
+                }
+            }
+        }
+
+        stage('Build Hardened Container Image') {
+            steps {
+                echo "==> [Gate 4] Building Multi-Stage Docker Image (eclipse-temurin:21-jre-alpine non-root)..."
+                sh '''
+                    docker build -t inventory-api:local -f backend/Dockerfile backend/
+                '''
+            }
+        }
+
+        stage('Container Vulnerability Scanning (Trivy Image)') {
+            steps {
+                echo "==> [Gate 5] Scanning Container Image for Zero CRITICAL Unfixed CVEs..."
+                sh '''
+                    echo "Scanning container image inventory-api:local..."
+                    trivy image --format json --output trivy-image-report.json inventory-api:local || true
+                    trivy image --ignore-unfixed --severity CRITICAL --exit-code 1 inventory-api:local
+                    echo "Container Vulnerability Scan passed: Zero CRITICAL unfixed CVEs."
+                '''
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: 'trivy-image-report.json', allowEmptyArchive: true
+                }
+            }
+        }
+
+        stage('Generate CycloneDX SBOM (Syft)') {
+            steps {
+                echo "==> [Gate 6] Generating CycloneDX SBOM via Syft..."
+                sh '''
+                    syft inventory-api:local -o cyclonedx-json=bom.json
+                    jq -e '.bomFormat == "CycloneDX"' bom.json > /dev/null || {
+                        echo "ERROR: Generated bom.json does not conform to CycloneDX schema"
+                        exit 1
+                    }
+                    echo "Verified CycloneDX format: $(jq -r .bomFormat bom.json) (specVersion: $(jq -r .specVersion bom.json))"
+                '''
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: 'bom.json', fingerprint: true
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            junit testResults: 'frontend/test-results/*.xml,backend/target/surefire-reports/*.xml,backend/target/failsafe-reports/*.xml', allowEmptyResults: true
+            archiveArtifacts artifacts: 'trufflehog-report.json,trivy-*.json,bom.json', allowEmptyArchive: true, fingerprint: true
+            sh '''
+                docker rmi inventory-api:local 2>/dev/null || true
+                docker image prune -f --filter "until=24h" || true
+            '''
+            cleanWs deleteDirs: true, notFailBuild: true
+        }
+        success {
+            echo "CI PIPELINE SUCCEEDED: All quality gates passed, container verified and SBOM generated."
+        }
+        failure {
+            echo "CI PIPELINE FAILED: Build stopped due to security policy violation, test failure, or packaging error."
+        }
+    }
+}

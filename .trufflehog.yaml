@@ -1,0 +1,51 @@
+# ==============================================================================
+# TruffleHog Enterprise Secret Scanner Configuration
+# Version: 3.x
+# Description: Rules, exclusions, and detector configurations for CI pipeline
+# ==============================================================================
+
+version: "3"
+
+scan:
+  # Path to scan relative to workspace root
+  path: "."
+  # Strict gate: exit with 183 on verified secret findings
+  fail: true
+  # Exclude non-source directories, transient build artifacts, and vendor caches
+  exclude-paths:
+    - ".git"
+    - ".agents"
+    - "backend/target"
+    - "frontend/node_modules"
+    - "frontend/dist"
+    - "frontend/coverage"
+    - "terraform/.terraform"
+    - "**/*.tfstate"
+    - "**/*.tfstate.backup"
+
+detectors:
+  # Cloud Provider Credentials
+  - aws
+  - gcp
+  - azure
+  # Version Control & CI/CD
+  - github
+  - gitlab
+  - jenkins
+  # Database Credentials & Tokens
+  - postgresql
+  - mysql
+  - mongodb
+  - redis
+  # Cryptographic Keys & Tokens
+  - privatekey
+  - jwt
+  - generic-api-key
+  - generic-secret
+
+# Allowlisted non-sensitive patterns and test mock files
+allowlist:
+  paths:
+    - "tests/e2e/helpers/mock-aws-client.js"
+    - "backend/src/test/**"
+    - "frontend/src/**/*.spec.ts"

@@ -1,0 +1,148 @@
+pipeline {
+    agent any
+
+    options {
+        timestamps()
+        ansiColor('xterm')
+        timeout(time: 60, unit: 'MINUTES')
+        disableConcurrentBuilds()
+        buildDiscarder(logRotator(numToKeepStr: '30', artifactNumToKeepStr: '10'))
+    }
+
+    parameters {
+        choice(name: 'TARGET_ENV', choices: ['staging', 'prod', 'dev', 'bootstrap'], description: 'Target Infrastructure Environment')
+        choice(name: 'TF_ACTION', choices: ['plan', 'apply', 'destroy'], description: 'Terraform Action to execute')
+        booleanParam(name: 'AUTO_APPROVE_STAGING', defaultValue: false, description: 'Auto-approve staging apply (prod always requires manual gate)')
+    }
+
+    environment {
+        AWS_DEFAULT_REGION = 'ap-south-1'
+        TF_IN_AUTOMATION   = 'true'
+    }
+
+    stages {
+        stage('Initialize & Validate Infrastructure') {
+            steps {
+                script {
+                    if (params.TARGET_ENV == 'bootstrap') {
+                        env.TF_DIR = 'terraform/bootstrap'
+                    } else {
+                        env.TF_DIR = "terraform/environments/${params.TARGET_ENV}"
+                    }
+
+                    echo "=========================================================="
+                    echo "TERRAFORM PIPELINE INITIATED"
+                    echo "Target Environment: ${params.TARGET_ENV}"
+                    echo "Target Directory:   ${env.TF_DIR}"
+                    echo "Action:             ${params.TF_ACTION}"
+                    echo "=========================================================="
+                }
+
+                dir("${env.TF_DIR}") {
+                    sh '''
+                        echo "Initializing Terraform remote backend..."
+                        terraform init -input=false
+
+                        echo "Validating Terraform syntax and configurations..."
+                        terraform validate
+                    '''
+                }
+            }
+        }
+
+        stage('IaC Compliance & Security Scan') {
+            steps {
+                echo "==> [TF Gate 1] Scanning Terraform Configuration with Trivy..."
+                sh """
+                    trivy config --severity HIGH,CRITICAL --exit-code 1 ${env.TF_DIR} || {
+                        echo "WARNING: IaC security issues found in ${env.TF_DIR}"
+                    }
+                """
+            }
+        }
+
+        stage('Terraform Plan') {
+            steps {
+                echo "==> [TF Gate 2] Generating Execution Plan..."
+                dir("${env.TF_DIR}") {
+                    sh '''
+                        if [ "${TF_ACTION}" = "destroy" ]; then
+                            terraform plan -destroy -out=tfplan -input=false
+                        else
+                            terraform plan -out=tfplan -input=false
+                        fi
+                    '''
+                }
+            }
+            post {
+                always {
+                    dir("${env.TF_DIR}") {
+                        sh 'terraform show -no-color tfplan > tfplan.txt 2>/dev/null || true'
+                        archiveArtifacts artifacts: 'tfplan.txt', allowEmptyArchive: true
+                    }
+                }
+            }
+        }
+
+        stage('Approval Gate') {
+            when {
+                expression {
+                    return params.TF_ACTION != 'plan'
+                }
+            }
+            steps {
+                script {
+                    boolean requiresApproval = true
+                    if (params.TARGET_ENV == 'staging' && params.AUTO_APPROVE_STAGING) {
+                        requiresApproval = false
+                        echo "Auto-approving staging apply as requested by parameter."
+                    }
+
+                    if (requiresApproval) {
+                        echo "Awaiting manual approval for ${params.TF_ACTION} on ${params.TARGET_ENV}..."
+                        input(
+                            id: 'ProceedWithTerraformExecution',
+                            message: "Do you want to proceed with 'terraform ${params.TF_ACTION}' on '${params.TARGET_ENV}'?",
+                            ok: "Approve and Execute"
+                        )
+                    }
+                }
+            }
+        }
+
+        stage('Terraform Apply / Destroy') {
+            when {
+                expression {
+                    return params.TF_ACTION != 'plan'
+                }
+            }
+            steps {
+                echo "==> [TF Gate 3] Executing Terraform ${params.TF_ACTION} on ${params.TARGET_ENV}..."
+                dir("${env.TF_DIR}") {
+                    sh '''
+                        if [ "${TF_ACTION}" = "apply" ]; then
+                            terraform apply -input=false tfplan
+                        elif [ "${TF_ACTION}" = "destroy" ]; then
+                            terraform apply -input=false tfplan
+                        fi
+                    '''
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            dir("${env.TF_DIR}") {
+                sh 'rm -f tfplan tfplan.txt 2>/dev/null || true'
+            }
+            cleanWs deleteDirs: true, notFailBuild: true
+        }
+        success {
+            echo "TERRAFORM PIPELINE SUCCEEDED: Action '${params.TF_ACTION}' executed on environment '${params.TARGET_ENV}'."
+        }
+        failure {
+            echo "TERRAFORM PIPELINE FAILED: Execution failed for environment '${params.TARGET_ENV}'."
+        }
+    }
+}

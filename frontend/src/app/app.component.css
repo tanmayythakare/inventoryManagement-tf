@@ -1,0 +1,14 @@
+.user-menu {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.user-badge {
+  font-size: 0.875rem;
+  color: #cbd5e1;
+}
+
+main {
+  min-height: calc(100vh - 64px);
+}

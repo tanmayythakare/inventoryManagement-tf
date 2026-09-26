@@ -1,0 +1,32 @@
+# ==============================================================================
+# Trivy Vulnerability & Misconfiguration Ignore Policy (.trivyignore)
+# Target Architecture: Enterprise AWS Three-Tier Workload (ap-south-1)
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# 1. Infrastructure as Code (Terraform) Policy Exceptions
+# ------------------------------------------------------------------------------
+
+# Rule: AVD-AWS-0053
+# Target: terraform/modules/alb/main.tf
+# Title: Load balancer listener configured with HTTP protocol
+# Architectural Rationale: Port 80 HTTP listener is explicitly configured with a
+# 301 permanent redirect rule forwarding all traffic to Port 443 HTTPS. No cleartext
+# application data is served over port 80.
+# Expiration: 2027-12-31
+AVD-AWS-0053
+
+# Rule: AVD-AWS-0004
+# Target: terraform/bootstrap/main.tf
+# Title: S3 bucket without MFA delete enabled
+# Architectural Rationale: Bootstrap remote state bucket uses native S3 locking
+# (use_lockfile = true) and versioning. MFA delete requires root credentials not
+# available during automated pipeline provisioning.
+# Expiration: 2027-12-31
+AVD-AWS-0004
+
+# ------------------------------------------------------------------------------
+# 2. Container Image Exceptions
+# ------------------------------------------------------------------------------
+# All CRITICAL unfixed CVEs are blocked by --ignore-unfixed --severity CRITICAL.
+# No active container CVE exemptions granted.

@@ -1,0 +1,71 @@
+<div class="container">
+  <div class="header-section">
+    <div>
+      <h1>Product Catalog</h1>
+      <p class="subtitle">Live inventory catalog with real-time reservation telemetry</p>
+    </div>
+    <button class="btn btn-primary" (click)="loadProducts()">↻ Refresh</button>
+  </div>
+
+  <div *ngIf="message" class="alert alert-success">
+    {{ message }}
+  </div>
+  <div *ngIf="errorMessage" class="alert alert-danger">
+    {{ errorMessage }}
+  </div>
+
+  <!-- Filters -->
+  <div class="filter-bar">
+    <div class="search-input">
+      <input
+        type="text"
+        class="form-control"
+        placeholder="Search SKU or name..."
+        [(ngModel)]="searchTerm"
+        (input)="applyFilter()"
+      />
+    </div>
+    <div class="category-select">
+      <select class="form-control" [(ngModel)]="selectedCategory" (change)="applyFilter()">
+        <option *ngFor="let cat of categories" [value]="cat">{{ cat }}</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Products Grid -->
+  <div class="grid catalog-grid">
+    <div *ngFor="let p of filteredProducts" class="card product-card">
+      <div class="product-top">
+        <span class="badge badge-info">{{ p.category }}</span>
+        <span class="badge" [ngClass]="getStockBadgeClass(p.availableQuantity)">
+          {{ getStockBadgeText(p.availableQuantity) }}
+        </span>
+      </div>
+
+      <h3 class="product-title">{{ p.name }}</h3>
+      <div class="product-sku">SKU: <code>{{ p.sku }}</code></div>
+      <p class="product-desc">{{ p.description }}</p>
+
+      <div class="stock-details">
+        <div class="stock-item">Physical: <strong>{{ p.quantity }}</strong></div>
+        <div class="stock-item">Reserved: <strong>{{ p.reservedQuantity }}</strong></div>
+        <div class="stock-item">Available: <strong>{{ p.availableQuantity }}</strong></div>
+      </div>
+
+      <div class="product-footer">
+        <div class="price-tag">${{ p.price | number:'1.2-2' }}</div>
+        <button
+          class="btn btn-success"
+          [disabled]="p.availableQuantity <= 0"
+          (click)="createQuickOrder(p)"
+        >
+          {{ p.availableQuantity > 0 ? 'Place Order' : 'Sold Out' }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div *ngIf="filteredProducts.length === 0 && !isLoading" class="no-results">
+    No products found matching your search criteria.
+  </div>
+</div>

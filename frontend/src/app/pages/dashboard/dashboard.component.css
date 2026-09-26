@@ -1,0 +1,65 @@
+.header-section {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.quick-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.metric-card {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  border-left: 4px solid var(--primary-color);
+}
+
+.warning-border {
+  border-left-color: var(--warning-color);
+}
+
+.info-border {
+  border-left-color: #0284c7;
+}
+
+.success-border {
+  border-left-color: var(--success-color);
+}
+
+.card-icon {
+  font-size: 2.25rem;
+}
+
+.text-warning {
+  color: var(--warning-color);
+}
+
+.text-info {
+  color: #0284c7;
+}
+
+.text-success {
+  color: var(--success-color);
+}
+
+.text-danger {
+  color: var(--danger-color);
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+}
+
+.text-center {
+  text-align: center;
+  color: var(--text-muted);
+}

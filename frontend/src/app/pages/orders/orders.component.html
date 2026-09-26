@@ -1,0 +1,64 @@
+<div class="container">
+  <div class="header-section">
+    <div>
+      <h1>Order Processing & Fulfillment</h1>
+      <p class="subtitle">Real-time order pipeline with pessimistic stock reservation locking</p>
+    </div>
+    <button class="btn btn-primary" (click)="loadOrders()">↻ Refresh</button>
+  </div>
+
+  <div *ngIf="message" class="alert alert-success">
+    {{ message }}
+  </div>
+  <div *ngIf="conflictMessage" class="alert alert-danger conflict-alert">
+    <strong>⚠️ Concurrency Guardrail Activated:</strong> {{ conflictMessage }}
+  </div>
+  <div *ngIf="errorMessage" class="alert alert-danger">
+    {{ errorMessage }}
+  </div>
+
+  <div class="table-responsive">
+    <table>
+      <thead>
+        <tr>
+          <th>Order #</th>
+          <th>Status</th>
+          <th>Items Count</th>
+          <th>Total Amount</th>
+          <th>Created At</th>
+          <th>Confirmed At</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let o of orders">
+          <td><strong>{{ o.orderNumber }}</strong></td>
+          <td>
+            <span class="badge" [ngClass]="getStatusBadgeClass(o.status)">
+              {{ o.status }}
+            </span>
+          </td>
+          <td>{{ o.items ? o.items.length : 0 }} item(s)</td>
+          <td>${{ o.totalAmount | number:'1.2-2' }}</td>
+          <td>{{ o.createdAt | date:'short' }}</td>
+          <td>{{ o.confirmedAt ? (o.confirmedAt | date:'short') : '-' }}</td>
+          <td>
+            <button
+              *ngIf="o.status === 'PENDING'"
+              class="btn btn-success btn-sm"
+              (click)="confirmOrder(o)"
+            >
+              Confirm Order
+            </button>
+            <span *ngIf="o.status !== 'PENDING'" class="text-muted">
+              Completed
+            </span>
+          </td>
+        </tr>
+        <tr *ngIf="orders.length === 0 && !isLoading">
+          <td colspan="7" class="text-center">No orders found in pipeline.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>

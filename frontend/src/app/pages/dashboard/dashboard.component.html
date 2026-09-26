@@ -1,0 +1,98 @@
+<div class="container">
+  <div class="header-section">
+    <div>
+      <h1>Operations Dashboard</h1>
+      <p class="subtitle">Platform health, inventory telemetry, and activity logs</p>
+    </div>
+    <div class="quick-actions">
+      <button class="btn btn-primary" (click)="loadDashboardData()">↻ Refresh</button>
+      <a routerLink="/products" class="btn btn-success">+ Catalog</a>
+      <a routerLink="/orders" class="btn btn-primary">Orders</a>
+    </div>
+  </div>
+
+  <div *ngIf="errorMessage" class="alert alert-danger">
+    {{ errorMessage }}
+  </div>
+
+  <!-- Metric KPI Cards -->
+  <div class="grid">
+    <div class="card metric-card">
+      <div class="card-icon">📦</div>
+      <div>
+        <div class="card-title">Total Catalog SKUs</div>
+        <div class="card-value">{{ stats.totalProducts }}</div>
+      </div>
+    </div>
+
+    <div class="card metric-card warning-border">
+      <div class="card-icon">⚠️</div>
+      <div>
+        <div class="card-title">Low Stock SKUs (&le; 5)</div>
+        <div class="card-value text-warning">{{ stats.lowStockCount }}</div>
+      </div>
+    </div>
+
+    <div class="card metric-card info-border">
+      <div class="card-icon">📑</div>
+      <div>
+        <div class="card-title">Pending Orders</div>
+        <div class="card-value text-info">{{ stats.pendingOrdersCount }}</div>
+      </div>
+    </div>
+
+    <div class="card metric-card success-border">
+      <div class="card-icon">💰</div>
+      <div>
+        <div class="card-title">Inventory Valuation</div>
+        <div class="card-value text-success">${{ stats.totalValuation | number:'1.2-2' }}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent Audit Stream -->
+  <div class="section-title">
+    <h2>Recent Stock Delta Stream</h2>
+    <span class="badge badge-info">Live Ledger</span>
+  </div>
+
+  <div class="table-responsive">
+    <table>
+      <thead>
+        <tr>
+          <th>Timestamp</th>
+          <th>SKU</th>
+          <th>Product</th>
+          <th>Reason</th>
+          <th>Physical &Delta;</th>
+          <th>Reserved &Delta;</th>
+          <th>New Balance</th>
+          <th>Operator</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let item of stats.recentActivity">
+          <td>{{ item.createdAt | date:'short' }}</td>
+          <td><strong>{{ item.productSku || 'ID ' + item.productId }}</strong></td>
+          <td>{{ item.productName || '-' }}</td>
+          <td>
+            <span class="badge" [ngClass]="item.reason === 'ORDER_RESERVED' ? 'badge-warning' : 'badge-info'">
+              {{ item.reason }}
+            </span>
+          </td>
+          <td [ngClass]="{'text-success': item.quantityDelta > 0, 'text-danger': item.quantityDelta < 0}">
+            {{ item.quantityDelta > 0 ? '+' : '' }}{{ item.quantityDelta }}
+          </td>
+          <td [ngClass]="{'text-warning': item.reservedQuantityDelta > 0}">
+            {{ item.reservedQuantityDelta > 0 ? '+' : '' }}{{ item.reservedQuantityDelta }}
+          </td>
+          <td>Physical: {{ item.newQuantity }} | Res: {{ item.newReservedQuantity }}</td>
+          <td><code>{{ item.operator }}</code></td>
+        </tr>
+        <tr *ngIf="!stats.recentActivity || stats.recentActivity.length === 0">
+          <td colspan="8" class="text-center">No recent stock audit activity found.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>

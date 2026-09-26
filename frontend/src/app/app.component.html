@@ -1,0 +1,19 @@
+<header *ngIf="isAuthenticated" class="navbar">
+  <a routerLink="/dashboard" class="brand">📦 Inventory Platform</a>
+
+  <nav class="nav-links">
+    <a routerLink="/dashboard" routerLinkActive="active">Dashboard</a>
+    <a routerLink="/products" routerLinkActive="active">Products</a>
+    <a routerLink="/inventory" routerLinkActive="active">Inventory</a>
+    <a routerLink="/orders" routerLinkActive="active">Orders</a>
+  </nav>
+
+  <div class="user-menu">
+    <span class="user-badge">👤 {{ currentUser }}</span>
+    <button class="btn-logout" (click)="logout()">Sign Out</button>
+  </div>
+</header>
+
+<main>
+  <router-outlet></router-outlet>
+</main>

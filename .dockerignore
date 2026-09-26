@@ -1,0 +1,33 @@
+# Git and Version Control
+.git
+.gitignore
+.gitattributes
+
+# Agent and Teamwork Metadata
+.agents/
+
+# Build Artefacts & Local Caches
+**/target/
+**/node_modules/
+**/dist/
+**/coverage/
+.mvn/
+*.log
+
+# Terraform State & Local Plugins
+terraform/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+
+# IDE & OS Files
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Documentation & CI Definitions
+docs/
+*.md
+Jenkinsfile*

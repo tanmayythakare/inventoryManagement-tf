@@ -1,0 +1,124 @@
+<div class="container">
+  <div class="header-section">
+    <div>
+      <h1>Inventory Management</h1>
+      <p class="subtitle">Direct stock level maintenance and mathematical ledger inspection</p>
+    </div>
+    <button class="btn btn-primary" (click)="loadInventory()">↻ Refresh</button>
+  </div>
+
+  <div *ngIf="message" class="alert alert-success">
+    {{ message }}
+  </div>
+  <div *ngIf="errorMessage" class="alert alert-danger">
+    {{ errorMessage }}
+  </div>
+
+  <div class="table-responsive">
+    <table>
+      <thead>
+        <tr>
+          <th>SKU</th>
+          <th>Product Name</th>
+          <th>Physical Qty</th>
+          <th>Reserved Qty</th>
+          <th>Available Qty</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let p of products">
+          <td><strong>{{ p.sku }}</strong></td>
+          <td>{{ p.name }}</td>
+          <td>{{ p.quantity }}</td>
+          <td>
+            <span class="badge" [ngClass]="p.reservedQuantity > 0 ? 'badge-warning' : 'badge-info'">
+              {{ p.reservedQuantity }}
+            </span>
+          </td>
+          <td>
+            <span class="badge" [ngClass]="p.availableQuantity > 0 ? 'badge-success' : 'badge-danger'">
+              {{ p.availableQuantity }}
+            </span>
+          </td>
+          <td><span class="badge badge-info">{{ p.status }}</span></td>
+          <td class="action-cell">
+            <button class="btn btn-primary btn-sm" (click)="openAdjustModal(p)">Adjust</button>
+            <button class="btn btn-secondary btn-sm" (click)="openAuditDrawer(p)">Audit Log</button>
+          </td>
+        </tr>
+        <tr *ngIf="products.length === 0 && !isLoading">
+          <td colspan="7" class="text-center">No inventory records found.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Stock Adjustment Modal -->
+  <div *ngIf="isAdjustModalOpen" class="modal-overlay">
+    <div class="modal-box">
+      <h3>Adjust Physical Stock: {{ selectedProduct?.sku }}</h3>
+      <p class="subtitle">Current Physical: {{ selectedProduct?.quantity }} | Reserved: {{ selectedProduct?.reservedQuantity }}</p>
+
+      <div class="form-group">
+        <label class="form-label">Delta (+ to add, - to subtract)</label>
+        <input type="number" class="form-control" [(ngModel)]="adjustmentDelta" placeholder="e.g. 10 or -5" />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Reason</label>
+        <select class="form-control" [(ngModel)]="adjustmentReason">
+          <option *ngFor="let r of reasons" [value]="r">{{ r }}</option>
+        </select>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn btn-secondary" (click)="closeAdjustModal()">Cancel</button>
+        <button class="btn btn-primary" [disabled]="adjustmentDelta === 0" (click)="submitAdjustment()">Submit Adjustment</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Audit Drawer -->
+  <div *ngIf="isAuditDrawerOpen" class="drawer-overlay" (click)="closeAuditDrawer()">
+    <div class="drawer" (click)="$event.stopPropagation()">
+      <div class="drawer-header">
+        <h3>Audit Ledger: {{ selectedProduct?.sku }}</h3>
+        <button class="btn-close" (click)="closeAuditDrawer()">✕</button>
+      </div>
+
+      <div class="table-responsive drawer-table">
+        <table>
+          <thead>
+            <tr>
+              <th>Timestamp</th>
+              <th>Reason</th>
+              <th>Qty &Delta;</th>
+              <th>Res &Delta;</th>
+              <th>New Balances</th>
+              <th>Operator</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let a of auditLogs">
+              <td>{{ a.createdAt | date:'short' }}</td>
+              <td><span class="badge badge-info">{{ a.reason }}</span></td>
+              <td [ngClass]="{'text-success': a.quantityDelta > 0, 'text-danger': a.quantityDelta < 0}">
+                {{ a.quantityDelta > 0 ? '+' : '' }}{{ a.quantityDelta }}
+              </td>
+              <td [ngClass]="{'text-warning': a.reservedQuantityDelta > 0}">
+                {{ a.reservedQuantityDelta > 0 ? '+' : '' }}{{ a.reservedQuantityDelta }}
+              </td>
+              <td>Qty: {{ a.newQuantity }} | Res: {{ a.newReservedQuantity }}</td>
+              <td><code>{{ a.operator }}</code></td>
+            </tr>
+            <tr *ngIf="auditLogs.length === 0">
+              <td colspan="6" class="text-center">No audit logs for this item.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
