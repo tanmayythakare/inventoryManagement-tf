@@ -24,6 +24,7 @@ module.exports = function (config) {
         { type: 'text-summary' },
         { type: 'lcovonly' }
       ],
+      // Code coverage thresholds strictly configured (>= 60% on all metrics)
       check: {
         global: {
           statements: 60,
