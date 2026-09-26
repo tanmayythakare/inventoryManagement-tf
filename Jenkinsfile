@@ -23,6 +23,9 @@ pipeline {
         NODE_OPTIONS         = '--max-old-space-size=512'
         TRUFFLEHOG_NO_UPDATE         = 'true'
         CHROME_BIN                   = '/usr/bin/google-chrome'
+        DOCKER_HOST                  = 'unix:///var/run/docker.sock'
+        TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE = '/var/run/docker.sock'
+        TESTCONTAINERS_CHECKS_DISABLE = 'true'
         TESTCONTAINERS_RYUK_DISABLED = 'true'
     }
 
@@ -121,7 +124,19 @@ pipeline {
                 echo "==> [Gate 3b] Executing Maven Unit & Integration Tests (Testcontainers PostgreSQL 16)..."
                 dir('backend') {
                     sh '''
-                        mvn clean verify -B
+                        export DOCKER_HOST=unix:///var/run/docker.sock
+                        export TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock
+                        export TESTCONTAINERS_CHECKS_DISABLE=true
+                        export TESTCONTAINERS_RYUK_DISABLED=true
+                        docker ps --format "table {{.ID}}\t{{.Image}}\t{{.Status}}" || true
+                        mkdir -p ~/.testcontainers
+                        cat << 'EOF' > ~/.testcontainers.properties
+docker.client.strategy=org.testcontainers.dockerclient.UnixSocketClientProviderStrategy
+docker.host=unix:///var/run/docker.sock
+checks.disable=true
+ryuk.disabled=true
+EOF
+                        mvn clean verify -B -Ddocker.host=unix:///var/run/docker.sock -Dtestcontainers.checks.disable=true
                     '''
                 }
             }
