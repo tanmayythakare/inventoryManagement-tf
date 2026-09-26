@@ -21,8 +21,9 @@ pipeline {
         ECR_REPOSITORY_NAME  = 'inventory-api'
         MAVEN_OPTS           = '-Xmx512m -XX:MaxRAMPercentage=50.0'
         NODE_OPTIONS         = '--max-old-space-size=512'
-        TRUFFLEHOG_NO_UPDATE = 'true'
-        CHROME_BIN           = '/usr/bin/google-chrome'
+        TRUFFLEHOG_NO_UPDATE         = 'true'
+        CHROME_BIN                   = '/usr/bin/google-chrome'
+        TESTCONTAINERS_RYUK_DISABLED = 'true'
     }
 
     stages {
