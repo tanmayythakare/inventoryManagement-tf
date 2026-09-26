@@ -22,6 +22,7 @@ pipeline {
         MAVEN_OPTS           = '-Xmx512m -XX:MaxRAMPercentage=50.0'
         NODE_OPTIONS         = '--max-old-space-size=512'
         TRUFFLEHOG_NO_UPDATE = 'true'
+        CHROME_BIN           = '/usr/bin/google-chrome'
     }
 
     stages {

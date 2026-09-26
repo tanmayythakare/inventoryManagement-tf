@@ -7,3 +7,6 @@ frontend/coverage
 terraform/\.terraform
 .*\.tfstate
 .*\.tfstate\.backup
+docker-compose\.yml
+backend/src/main/resources/application\.yml
+backend/src/main/java/com/devops/inventory/config/JwtConfig\.java
