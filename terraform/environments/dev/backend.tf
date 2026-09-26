@@ -13,7 +13,7 @@ terraform {
   }
 
   backend "s3" {
-    bucket       = "pr-inventory-tfstate-ap-south-1"
+    bucket       = "pr-inventory-tfstate-ap-south-1-392749559832"
     key          = "environments/dev/terraform.tfstate"
     region       = "ap-south-1"
     encrypt      = true
