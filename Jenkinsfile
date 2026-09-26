@@ -21,6 +21,7 @@ pipeline {
         ECR_REPOSITORY_NAME  = 'inventory-api'
         MAVEN_OPTS           = '-Xmx512m -XX:MaxRAMPercentage=50.0'
         NODE_OPTIONS         = '--max-old-space-size=512'
+        TRUFFLEHOG_NO_UPDATE = 'true'
     }
 
     stages {
@@ -58,7 +59,7 @@ pipeline {
                 echo "==> [Gate 1] Running TruffleHog Secret Scan..."
                 sh '''
                     echo "Scanning repository for leaked credentials..."
-                    trufflehog filesystem . --exclude-paths=.git,backend/target,frontend/node_modules,frontend/dist --fail --json > trufflehog-report.json || {
+                    trufflehog filesystem . --no-update --exclude-paths=.git,backend/target,frontend/node_modules,frontend/dist --fail --json > trufflehog-report.json || {
                         EXIT_CODE=$?
                         if [ $EXIT_CODE -eq 183 ]; then
                             echo "CRITICAL: Leaked credentials detected by TruffleHog! Halting pipeline (exit 183)."
