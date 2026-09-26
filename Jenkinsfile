@@ -24,6 +24,7 @@ pipeline {
         TRUFFLEHOG_NO_UPDATE         = 'true'
         CHROME_BIN                   = '/usr/bin/google-chrome'
         DOCKER_HOST                  = 'unix:///var/run/docker.sock'
+        DOCKER_API_VERSION           = '1.44'
         TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE = '/var/run/docker.sock'
         TESTCONTAINERS_CHECKS_DISABLE = 'true'
         TESTCONTAINERS_RYUK_DISABLED = 'true'
@@ -125,6 +126,7 @@ pipeline {
                 dir('backend') {
                     sh '''
                         export DOCKER_HOST=unix:///var/run/docker.sock
+                        export DOCKER_API_VERSION=1.44
                         export TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock
                         export TESTCONTAINERS_CHECKS_DISABLE=true
                         export TESTCONTAINERS_RYUK_DISABLED=true
@@ -136,7 +138,10 @@ docker.host=unix:///var/run/docker.sock
 checks.disable=true
 ryuk.disabled=true
 EOF
-                        mvn clean verify -B -Ddocker.host=unix:///var/run/docker.sock -Dtestcontainers.checks.disable=true
+                        cat << 'EOF' > ~/.docker-java.properties
+api.version=1.44
+EOF
+                        mvn clean verify -B -Ddocker.host=unix:///var/run/docker.sock -Dtestcontainers.checks.disable=true -Ddocker.client.apiVersion=1.44
                     '''
                 }
             }
